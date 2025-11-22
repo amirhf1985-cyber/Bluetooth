@@ -16,7 +16,7 @@ version = 1.0.0
 version.code = 1
 
 # الزامات پایتون
-requirements = python3.11,kivy==2.3.0,pyjnius,android,hostpython3,openssl,libffi
+requirements = python3.12,kivy==2.3.0,pyjnius,android,hostpython3,openssl,libffi
 
 # نسخه پایتون برای Buildozer
 python.version = 3.11
