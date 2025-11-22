@@ -9,21 +9,19 @@ package.domain = ir.bluetoothrc
 
 # مسیر کد اصلی
 source.dir = .
-# فایل اصلی پایتون
 source.main = main.py
 
 # نسخه اپلیکیشن
 version = 1.0.0
-# شماره نسخه برای استور
 version.code = 1
 
 # الزامات پایتون
 requirements = python3.11,kivy==2.3.0,pyjnius,android,hostpython3,openssl,libffi
 
-# نسخه پایتون برای buildozer
+# نسخه پایتون برای Buildozer
 python.version = 3.11
 
-# اندروید SDK و NDK
+# تنظیمات اندروید
 android.api = 31
 android.minapi = 21
 android.ndk = 25b
@@ -33,7 +31,7 @@ android.sdk = 31
 # مجوزهای اندروید
 android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,BLUETOOTH_SCAN,BLUETOOTH_CONNECT,INTERNET
 
-# ویژگی‌های مورد نیاز
+# ویژگی‌ها
 android.features = android.hardware.bluetooth,android.hardware.sensor.accelerometer
 
 # آیکون و لوگو
@@ -52,7 +50,7 @@ android.accept_sdk_license = True
 # پیکربندی p4a
 p4a.branch = master
 
-# OSX (در صورت نیاز)
+# OSX (اختیاری)
 osx.python_version = 3
 osx.kivy_version = 2.3.0
 
