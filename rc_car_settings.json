@@ -1,0 +1,63 @@
+{
+  "app_config": {
+    "version": "1.0.0",
+    "app_name": "Bluetooth RC",
+    "last_updated": "2024-01-15T10:30:00Z"
+  },
+  "bluetooth_settings": {
+    "auto_connect": true,
+    "last_connected_device": "",
+    "scan_duration": 10,
+    "connection_timeout": 30,
+    "reconnect_attempts": 3
+  },
+  "control_settings": {
+    "sensitivity": 1.0,
+    "steering_sensitivity": 1.0,
+    "steering_deadzone": 5,
+    "max_steering_angle": 90,
+    "pedal_sensitivity": 1.0,
+    "reverse_speed_limit": 50
+  },
+  "vehicle_settings": {
+    "max_speed": 100,
+    "acceleration_rate": 0.5,
+    "deceleration_rate": 0.7,
+    "turn_signal_timeout": 10,
+    "hazard_light_timeout": 0
+  },
+  "safety_settings": {
+    "battery_warning_level": 20,
+    "battery_critical_level": 10,
+    "low_battery_alert": true,
+    "connection_lost_alert": true,
+    "overheat_protection": true,
+    "auto_brake_on_disconnect": true
+  },
+  "ui_settings": {
+    "theme": "light",
+    "language": "en",
+    "font_size": "medium",
+    "haptic_feedback": true,
+    "sound_effects": true,
+    "command_confirmation": false,
+    "show_battery_percentage": true
+  },
+  "accelerometer_settings": {
+    "enabled": false,
+    "calibration_x": 0.0,
+    "calibration_y": 0.0,
+    "calibration_z": 0.0,
+    "smoothing_factor": 0.8,
+    "invert_x_axis": false,
+    "invert_y_axis": false
+  },
+  "advanced_settings": {
+    "debug_mode": false,
+    "log_level": "INFO",
+    "data_logging": false,
+    "performance_mode": false,
+    "ble_mtu_size": 512,
+    "command_delay": 0.1
+  }
+}
