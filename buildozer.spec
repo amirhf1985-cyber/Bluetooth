@@ -17,8 +17,8 @@ version = 1.0.0
 # شماره نسخه برای استور
 version.code = 1
 
-# الزامات پایتون
-requirements = python3,kivy,pyjnius,android
+# الزامات پایتون - تغییرات اینجا
+requirements = python3,kivy,pyjnius,android,hostpython3,openssl,libffi
 
 # نسخه پایتون
 python.version = 3.9
@@ -30,11 +30,11 @@ android.ndk = 25b
 android.sdk = 26
 android.ndk_api = 21
 
-# دسترسی‌های مورد نیاز اندروید
-android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,BLUETOOTH_SCAN,BLUETOOTH_CONNECT
+# دسترسی‌های مورد نیاز اندروید - به‌روز شده
+android.permissions = BLUETOOTH, BLUETOOTH_ADMIN, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, BLUETOOTH_SCAN, BLUETOOTH_CONNECT, INTERNET
 
 # ویژگی‌های مورد نیاز
-android.features = android.hardware.bluetooth,android.hardware.sensor.accelerometer
+android.features = android.hardware.bluetooth, android.hardware.sensor.accelerometer
 
 # آیکون و لوگو
 icon.filename = icon.png
@@ -46,6 +46,11 @@ orientation = landscape
 # تنظیمات بیلد
 fullscreen = 1
 android.window_soft_input_mode = adjustResize
+
+# تنظیمات اضافی برای حل مشکل autoconf
+android.accept_sdk_license = True
+android.allow_backup = True
+p4a.branch = develop
 
 # بک‌اند Kivy
 osx.python_version = 3
