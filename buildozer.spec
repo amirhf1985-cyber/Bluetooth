@@ -17,24 +17,24 @@ version = 1.0.0
 # شماره نسخه برای استور
 version.code = 1
 
-# الزامات پایتون - تغییرات اینجا
-requirements = python3,kivy,pyjnius,android,hostpython3,openssl,libffi
+# الزامات پایتون
+requirements = python3.11,kivy==2.3.0,pyjnius,android,hostpython3,openssl,libffi
 
-# نسخه پایتون
-python.version = 3.9
+# نسخه پایتون برای buildozer
+python.version = 3.11
 
 # اندروید SDK و NDK
 android.api = 31
 android.minapi = 21
 android.ndk = 25b
-android.sdk = 26
 android.ndk_api = 21
+android.sdk = 31
 
-# دسترسی‌های مورد نیاز اندروید - به‌روز شده
-android.permissions = BLUETOOTH, BLUETOOTH_ADMIN, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, BLUETOOTH_SCAN, BLUETOOTH_CONNECT, INTERNET
+# مجوزهای اندروید
+android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,BLUETOOTH_SCAN,BLUETOOTH_CONNECT,INTERNET
 
 # ویژگی‌های مورد نیاز
-android.features = android.hardware.bluetooth, android.hardware.sensor.accelerometer
+android.features = android.hardware.bluetooth,android.hardware.sensor.accelerometer
 
 # آیکون و لوگو
 icon.filename = icon.png
@@ -46,16 +46,15 @@ orientation = landscape
 # تنظیمات بیلد
 fullscreen = 1
 android.window_soft_input_mode = adjustResize
-
-# تنظیمات اضافی برای حل مشکل autoconf
-android.accept_sdk_license = True
 android.allow_backup = True
-p4a.branch = develop
+android.accept_sdk_license = True
 
-# بک‌اند Kivy
+# پیکربندی p4a
+p4a.branch = master
+
+# OSX (در صورت نیاز)
 osx.python_version = 3
 osx.kivy_version = 2.3.0
 
-# تنظیمات بیلد
 [buildozer]
 log_level = 2
