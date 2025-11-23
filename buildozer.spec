@@ -1,24 +1,56 @@
 [app]
 
+# عنوان اپلیکیشن
 title = Bluetooth RC
+# نام پکیج
 package.name = bluetoothrc
-package.domain = org.amirhf
+# دامنه پکیج
+package.domain = ir.bluetoothrc
 
+# مسیر کد اصلی
 source.dir = .
-source.include_exts = py,png,jpg,kv,json
+# فایل اصلی پایتون
+source.main = main.py
 
-version = 0.1
+# نسخه اپلیکیشن
+version = 1.0.0
+# شماره نسخه برای استور
+version.code = 1
 
-requirements = python3,kivy==2.3.0,pyjnius,android,openssl,libffi
-orientation = landscape
-fullscreen = 1
+# الزامات پایتون
+requirements = python3,kivy,pyjnius,android
 
-android.api = 33
+# نسخه پایتون
+python.version = 3.9
+
+# اندروید SDK و NDK
+android.api = 31
 android.minapi = 21
-
 android.ndk = 25b
-android.ndk_path = /usr/lib/android-ndk/android-ndk-r25b
-android.sdk_path = /usr/lib/android-sdk
+android.sdk = 26
 android.ndk_api = 21
 
-android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,BLUETOOTH_CONNECT,BLUETOOTH_SCAN
+# دسترسی‌های مورد نیاز اندروید
+android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,BLUETOOTH_SCAN,BLUETOOTH_CONNECT
+
+# ویژگی‌های مورد نیاز
+android.features = android.hardware.bluetooth,android.hardware.sensor.accelerometer
+
+# آیکون و لوگو
+icon.filename = icon.png
+presplash.filename = presplash.png
+
+# جهت صفحه
+orientation = landscape
+
+# تنظیمات بیلد
+fullscreen = 1
+android.window_soft_input_mode = adjustResize
+
+# بک‌اند Kivy
+osx.python_version = 3
+osx.kivy_version = 2.3.0
+
+# تنظیمات بیلد
+[buildozer]
+log_level = 2

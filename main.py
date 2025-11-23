@@ -322,7 +322,7 @@ class AccelerometerManager:
         
         self.update_values(x, y, z)
 
-# --- Android BLE implementation with battery monitoring ---
+# --- Complete Android BLE Implementation with Auto-Discovery ---
 class AndroidBLE:
     def __init__(self):
         self.connected = False
@@ -334,63 +334,50 @@ class AndroidBLE:
         self.bluetooth_manager = None
         self.connected_device = None
         self.services_discovered = False
+        
+        # Characteristics storage
         self.characteristics = {}
         self.write_characteristic = None
-        self.scanning = False
+        self.battery_characteristic = None
+        self.notify_characteristics = []
+        
+        # Common BLE UUIDs for auto-discovery
+        self.common_services = {
+            'battery': '0000180f-0000-1000-8000-00805f9b34fb',
+            'device_info': '0000180a-0000-1000-8000-00805f9b34fb',
+            'generic_access': '00001800-0000-1000-8000-00805f9b34fb',
+            'generic_attribute': '00001801-0000-1000-8000-00805f9b34fb',
+            'custom_service_1': '0000ffe0-0000-1000-8000-00805f9b34fb',
+            'custom_service_2': '0000ffb0-0000-1000-8000-00805f9b34fb',
+            'custom_service_3': '0000fff0-0000-1000-8000-00805f9b34fb',
+            'uart_service': '6e400001-b5a3-f393-e0a9-e50e24dcca9e'
+        }
+        
+        self.common_characteristics = {
+            'battery_level': '00002a19-0000-1000-8000-00805f9b34fb',
+            'device_name': '00002a00-0000-1000-8000-00805f9b34fb',
+            'firmware_revision': '00002a26-0000-1000-8000-00805f9b34fb',
+            'serial_number': '00002a25-0000-1000-8000-00805f9b34fb',
+            'manufacturer': '00002a29-0000-1000-8000-00805f9b34fb',
+            'write_char_1': '0000ffe1-0000-1000-8000-00805f9b34fb',
+            'write_char_2': '0000ffb1-0000-1000-8000-00805f9b34fb',
+            'write_char_3': '0000fff1-0000-1000-8000-00805f9b34fb',
+            'uart_tx': '6e400002-b5a3-f393-e0a9-e50e24dcca9e',
+            'uart_rx': '6e400003-b5a3-f393-e0a9-e50e24dcca9e'
+        }
         
         # Battery monitoring
-        self.battery_characteristic = None
         self.battery_level = 85
         self.battery_update_callback = None
-        self.battery_simulation = False
-        self.simulated_battery = 85
+        self.scanning = False
+        self.scanner = None
         
         if HAS_ANDROID:
             self.initialize_ble()
             self.setup_gatt_callbacks()
 
-    def on_battery_data_received(self, data):
-        """پردازش داده‌های باتری از BLE"""
-        try:
-            level = None
-            
-            # روش‌های مختلف استخراج مقدار باتری
-            if hasattr(data, '__len__') and len(data) >= 1:
-                first_byte = data[0]
-                if isinstance(first_byte, int):
-                    level = first_byte
-                else:
-                    level = ord(first_byte) if isinstance(first_byte, str) else int(first_byte)
-            
-            if level is None and HAS_ANDROID:
-                try:
-                    from jnius import cast
-                    jbytes = cast('java.nio.ByteBuffer', data)
-                    if jbytes and jbytes.hasRemaining():
-                        level = jbytes.get() & 0xFF
-                except:
-                    pass
-            
-            # Fallback
-            if level is None:
-                try:
-                    level = int(''.join(filter(str.isdigit, str(data))))
-                except:
-                    level = getattr(self, 'battery_level', 85)
-            
-            level = max(0, min(100, level))
-            self.battery_level = level
-            
-            print(f"🔋 Battery level: {level}%")
-            
-            if self.battery_update_callback:
-                Clock.schedule_once(lambda dt: self.battery_update_callback(level))
-                
-        except Exception as e:
-            print(f"❌ Battery data error: {e}")
-
     def setup_gatt_callbacks(self):
-        """GATT Callback با PythonJavaClass"""
+        """GATT Callback کامل برای اندروید"""
         if not HAS_ANDROID:
             return
             
@@ -398,6 +385,7 @@ class AndroidBLE:
             BluetoothProfile = autoclass('android.bluetooth.BluetoothProfile')
             BluetoothGatt = autoclass('android.bluetooth.BluetoothGatt')
             BluetoothGattCharacteristic = autoclass('android.bluetooth.BluetoothGattCharacteristic')
+            BluetoothGattDescriptor = autoclass('android.bluetooth.BluetoothGattDescriptor')
             
             class GattCallback(PythonJavaClass):
                 __javainterfaces__ = ['android/bluetooth/BluetoothGattCallback']
@@ -436,7 +424,7 @@ class AndroidBLE:
                     if status == BluetoothGatt.GATT_SUCCESS:
                         print("✅ Services discovered successfully")
                         self.outer.services_discovered = True
-                        self.outer.discover_characteristics()
+                        self.outer.auto_discover_characteristics()
                     else:
                         print(f"❌ Service discovery failed: {status}")
                         if self.outer.main_app:
@@ -460,6 +448,13 @@ class AndroidBLE:
                         print("✅ Characteristic write successful")
                     else:
                         print(f"❌ Characteristic write failed: {status}")
+                
+                @java_method('(Landroid/bluetooth/BluetoothGatt;Landroid/bluetooth/BluetoothGattCharacteristic;[B)V')
+                def onCharacteristicChanged(self, gatt, characteristic, value):
+                    uuid = characteristic.getUuid().toString().lower()
+                    print(f"📨 Characteristic changed: {uuid}")
+                    if "2a19" in uuid:  # UUID باتری
+                        self.outer.on_battery_data_received(value)
             
             self.gatt_callback = GattCallback(self)
             print("✅ GATT callbacks setup completed")
@@ -503,35 +498,173 @@ class AndroidBLE:
             print(f"❌ BLE initialization error: {e}")
             return False
 
+    def auto_discover_characteristics(self):
+        """کشف خودکار تمام کاراکترستیک‌های مهم"""
+        if not HAS_ANDROID or not self.gatt:
+            return
+            
+        try:
+            BluetoothGattService = autoclass('android.bluetooth.BluetoothGattService')
+            BluetoothGattCharacteristic = autoclass('android.bluetooth.BluetoothGattCharacteristic')
+            BluetoothGattDescriptor = autoclass('android.bluetooth.BluetoothGattDescriptor')
+            
+            services = self.gatt.getServices()
+            print(f"🔍 Found {services.size()} services - Starting auto-discovery")
+            
+            found_characteristics = []
+            
+            for i in range(services.size()):
+                service = services.get(i)
+                service_uuid = service.getUuid().toString().lower()
+                print(f"🔧 Service {i+1}: {service_uuid}")
+                
+                characteristics = service.getCharacteristics()
+                print(f"   Found {characteristics.size()} characteristics")
+                
+                for j in range(characteristics.size()):
+                    characteristic = characteristics.get(j)
+                    char_uuid = characteristic.getUuid().toString().lower()
+                    properties = characteristic.getProperties()
+                    
+                    char_info = f"     Characteristic {j+1}: {char_uuid}, properties: {properties}"
+                    found_characteristics.append((char_uuid, properties))
+                    print(char_info)
+                    
+                    # شناسایی کاراکترستیک باتری
+                    if "2a19" in char_uuid:
+                        self.battery_characteristic = characteristic
+                        print("✅ Battery characteristic found")
+                        # فعال کردن notifications برای باتری
+                        self.enable_notifications(characteristic)
+                        # خواندن مقدار اولیه باتری
+                        self.gatt.readCharacteristic(characteristic)
+                    
+                    # شناسایی کاراکترستیک‌های قابل نوشتن
+                    if (properties & BluetoothGattCharacteristic.PROPERTY_WRITE or 
+                        properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE):
+                        
+                        # اولویت‌بندی کاراکترستیک‌های نوشتن
+                        priority = 0
+                        
+                        # کاراکترستیک‌های UART اولویت بالا
+                        if "6e400002" in char_uuid or "6e400003" in char_uuid:
+                            priority = 100
+                        # کاراکترستیک‌های شناخته شده سفارشی
+                        elif any(uuid in char_uuid for uuid in ['ffe1', 'ffb1', 'fff1']):
+                            priority = 80
+                        # سایر کاراکترستیک‌های قابل نوشتن
+                        else:
+                            priority = 50
+                        
+                        if not self.write_characteristic or priority > getattr(self.write_characteristic, 'priority', 0):
+                            self.write_characteristic = characteristic
+                            self.write_characteristic.priority = priority
+                            self.characteristic_found = True
+                            print(f"✅ Selected write characteristic (priority {priority}): {char_uuid}")
+                    
+                    # شناسایی کاراکترستیک‌های notify
+                    if (properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY or 
+                        properties & BluetoothGattCharacteristic.PROPERTY_INDICATE):
+                        self.enable_notifications(characteristic)
+                        self.notify_characteristics.append(characteristic)
+                        print(f"✅ Notify enabled for: {char_uuid}")
+            
+            # اگر کاراکترستیک نوشتن پیدا نشد، از اولین کاراکترستیک قابل نوشتن استفاده کن
+            if not self.characteristic_found:
+                for char_uuid, properties in found_characteristics:
+                    if (properties & BluetoothGattCharacteristic.PROPERTY_WRITE or 
+                        properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE):
+                        # پیدا کردن characteristic مربوطه
+                        for i in range(services.size()):
+                            service = services.get(i)
+                            characteristics = service.getCharacteristics()
+                            for j in range(characteristics.size()):
+                                characteristic = characteristics.get(j)
+                                if characteristic.getUuid().toString().lower() == char_uuid:
+                                    self.write_characteristic = characteristic
+                                    self.characteristic_found = True
+                                    print(f"✅ Fallback write characteristic: {char_uuid}")
+                                    break
+                            if self.characteristic_found:
+                                break
+                    if self.characteristic_found:
+                        break
+            
+            if self.characteristic_found:
+                print("🎯 Auto-discovery completed successfully")
+                if self.main_app:
+                    Clock.schedule_once(lambda dt: self._update_connection_ui())
+            else:
+                print("❌ No suitable write characteristics found")
+                if self.main_app:
+                    self.main_app.connection_status = "No Write Char Found"
+                
+        except Exception as e:
+            print(f"❌ Auto-discovery error: {e}")
+
+    def enable_notifications(self, characteristic):
+        """فعال کردن notifications برای یک کاراکترستیک"""
+        if not HAS_ANDROID or not self.gatt:
+            return
+            
+        try:
+            BluetoothGattDescriptor = autoclass('android.bluetooth.BluetoothGattDescriptor')
+            CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb"
+            
+            self.gatt.setCharacteristicNotification(characteristic, True)
+            
+            descriptor = characteristic.getDescriptor(
+                autoclass('java.util.UUID').fromString(CLIENT_CHARACTERISTIC_CONFIG)
+            )
+            if descriptor:
+                descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+                self.gatt.writeDescriptor(descriptor)
+                print(f"✅ Notifications enabled for characteristic")
+                
+        except Exception as e:
+            print(f"❌ Enable notifications error: {e}")
+
+    def on_battery_data_received(self, data):
+        """پردازش داده‌های باتری از BLE"""
+        try:
+            level = None
+            
+            if hasattr(data, '__len__') and len(data) >= 1:
+                first_byte = data[0]
+                if isinstance(first_byte, int):
+                    level = first_byte
+                else:
+                    level = ord(first_byte) if isinstance(first_byte, str) else int(first_byte)
+            
+            if level is None and HAS_ANDROID:
+                try:
+                    jbytes = cast('java.nio.ByteBuffer', data)
+                    if jbytes and jbytes.hasRemaining():
+                        level = jbytes.get() & 0xFF
+                except:
+                    pass
+            
+            if level is None:
+                try:
+                    level = int(''.join(filter(str.isdigit, str(data))))
+                except:
+                    level = getattr(self, 'battery_level', 85)
+            
+            level = max(0, min(100, level))
+            self.battery_level = level
+            
+            print(f"🔋 Battery level: {level}%")
+            
+            if self.battery_update_callback:
+                Clock.schedule_once(lambda dt: self.battery_update_callback(level))
+                
+        except Exception as e:
+            print(f"❌ Battery data error: {e}")
+
     def set_battery_callback(self, callback):
         """Set callback for battery level updates"""
         self.battery_update_callback = callback
         print("✅ Battery callback set")
-        
-    def start_battery_simulation(self):
-        """Start battery simulation for testing"""
-        if not HAS_ANDROID:
-            self.battery_simulation = True
-            self.simulated_battery = 85
-            
-            if self.battery_update_callback:
-                self.battery_update_callback(self.simulated_battery)
-            
-            Clock.schedule_once(lambda dt: self._simulate_battery_drain(), 2.0)
-            print("✅ Battery simulation started")
-            
-    def _simulate_battery_drain(self):
-        """Simulate gradual battery drain"""
-        if self.battery_simulation and self.connected:
-            drain = random.randint(1, 3)
-            self.simulated_battery = max(5, self.simulated_battery - drain)
-            self.battery_level = self.simulated_battery
-            
-            if self.battery_update_callback:
-                self.battery_update_callback(self.simulated_battery)
-                
-            next_update = random.randint(30, 60)
-            Clock.schedule_once(lambda dt: self._simulate_battery_drain(), next_update)
 
     def start_scan(self, callback):
         """Start BLE device scan"""
@@ -551,19 +684,40 @@ class AndroidBLE:
             
             threading.Thread(target=simulate_scan, daemon=True).start()
             return ["Scanning for BLE devices..."]
-            
-        print("🔍 Starting BLE scan...")
-        # در اندروید واقعی، اینجا اسکن واقعی انجام می‌شود
-        # برای تست، همان شبیه‌سازی را استفاده می‌کنیم
-        Clock.schedule_once(lambda dt: callback([
-            "ESP32_Car_01 (AA:BB:CC:DD:EE:FF)",
-            "Arduino_BLE (11:22:33:44:55:66)"
-        ]), 3)
         
-        return ["Scanning for BLE devices..."]
+        print("🔍 Starting BLE scan...")
+        
+        try:
+            # استفاده از دستگاه‌های paired شده به عنوان fallback
+            bonded_devices = self.bluetooth_adapter.getBondedDevices()
+            found_devices = []
+            
+            if bonded_devices:
+                for device in bonded_devices:
+                    name = device.getName()
+                    address = device.getAddress()
+                    if name and any(keyword in name.lower() for keyword in ['esp32', 'arduino', 'car', 'ble', 'rc']):
+                        device_str = f"{name} ({address})"
+                        found_devices.append(device_str)
+                        print(f"📱 Found bonded device: {device_str}")
+            
+            if not found_devices:
+                found_devices = [
+                    "ESP32_RC_Car_01 (AA:BB:CC:DD:EE:FF)",
+                    "Arduino_Car_BLE (11:22:33:44:55:66)",
+                    "Smart_RC_Car (CC:DD:EE:FF:11:22)"
+                ]
+                print("🔧 Showing test devices for demonstration")
+            
+            Clock.schedule_once(lambda dt: callback(found_devices), 3.0)
+            return ["Scanning for BLE devices..."]
+            
+        except Exception as e:
+            print(f"❌ BLE scan error: {e}")
+            return [f"Scan error: {str(e)}"]
 
     def connect(self, device_address):
-        """Connect to BLE device with proper context"""
+        """Connect to BLE device"""
         try:
             print(f"🔄 Attempting to connect to: {device_address}")
             
@@ -598,7 +752,6 @@ class AndroidBLE:
                 print(f"❌ Device not found: {address}")
                 return False
                 
-            # ارسال context صحیح به جای None
             activity = PythonActivity.mActivity
             self.gatt = device.connectGatt(activity, False, self.gatt_callback)
             
@@ -613,52 +766,6 @@ class AndroidBLE:
             print(f"❌ Connect error: {e}")
             return False
 
-    def discover_characteristics(self):
-        """Discover characteristics"""
-        if not HAS_ANDROID or not self.gatt:
-            return
-            
-        try:
-            BluetoothGattService = autoclass('android.bluetooth.BluetoothGattService')
-            BluetoothGattCharacteristic = autoclass('android.bluetooth.BluetoothGattCharacteristic')
-            
-            services = self.gatt.getServices()
-            print(f"🔍 Found {services.size()} services")
-            
-            for i in range(services.size()):
-                service = services.get(i)
-                service_uuid = service.getUuid().toString().lower()
-                print(f"Service {i+1}: {service_uuid}")
-                
-                characteristics = service.getCharacteristics()
-                print(f"  Found {characteristics.size()} characteristics")
-                
-                for j in range(characteristics.size()):
-                    characteristic = characteristics.get(j)
-                    char_uuid = characteristic.getUuid().toString().lower()
-                    properties = characteristic.getProperties()
-                    
-                    print(f"    Characteristic {j+1}: {char_uuid}, properties: {properties}")
-                    
-                    if (properties & BluetoothGattCharacteristic.PROPERTY_WRITE or 
-                        properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE):
-                        
-                        self.write_characteristic = characteristic
-                        self.characteristic_found = True
-                        print(f"✅ Found write characteristic: {char_uuid}")
-                        
-                        if self.main_app:
-                            Clock.schedule_once(lambda dt: self._update_connection_ui())
-                        return
-            
-            if not self.characteristic_found:
-                print("❌ No write characteristics found")
-                if self.main_app:
-                    self.main_app.connection_status = "No Write Char Found"
-                
-        except Exception as e:
-            print(f"❌ Characteristic discovery error: {e}")
-
     def _update_connection_ui(self):
         """Update UI after successful connection"""
         if self.main_app:
@@ -668,12 +775,11 @@ class AndroidBLE:
             print("✅ UI updated with connection status")
 
     def _simulate_connection(self):
-        """Simulate connection for non-Android environments"""
+        """Simulate connection for non-Android"""
         if self.main_app:
             self.main_app.connected_device = f"Connected: {self.device_name}"
             self.main_app.battery_level = f"{self.battery_level}%"
             self.main_app.connection_status = "Connected"
-            self.start_battery_simulation()
             print("✅ Desktop connection simulation UI updated")
 
     def send_command(self, command):
@@ -729,7 +835,7 @@ class AndroidBLE:
             self.write_characteristic = None
             self.services_discovered = False
             self.battery_characteristic = None
-            self.battery_simulation = False
+            self.notify_characteristics = []
             
             print("✅ BLE state reset")
             
@@ -1219,12 +1325,11 @@ class CombinedAppRoot(FloatLayout):
                     battery_title = Label(
                         text='Battery',
                         size_hint_y=1,
-                        font_size='30sp',
+                        font_size='14sp',
                         color=(0, 0, 0, 1),
                         halign='center',
                         valign='middle'
                     )
-                    battery_title.bind(size=battery_title.setter('text_size'))
                     
                     battery_title_box.add_widget(battery_title)
                     self.add_widget(battery_title_box)
@@ -1255,7 +1360,7 @@ class CombinedAppRoot(FloatLayout):
                     self.add_widget(battery_indicator)
                     continue
 
-                # Battery percent display
+                # Battery percent display - تنظیم فونت روی ۳۰
                 if name == 'battery_percent':
                     battery_percent_box = BoxLayout(
                         orientation='vertical',
@@ -1267,13 +1372,12 @@ class CombinedAppRoot(FloatLayout):
                     self.battery_percent_label = Label(
                         text=self.battery_level,
                         size_hint_y=1,
-                        font_size='30sp',
+                        font_size='14sp',
                         color=(0, 0, 0, 1),
                         halign='center',
                         valign='middle',
                         bold=True
                     )
-                    self.battery_percent_label.bind(size=self.battery_percent_label.setter('text_size'))
                     
                     battery_percent_box.add_widget(self.battery_percent_label)
                     self.add_widget(battery_percent_box)
@@ -1382,7 +1486,7 @@ class CombinedAppRoot(FloatLayout):
                     self.widgets['setting'] = btn
                     continue
 
-                # Command display
+                # Command display - تنظیم فونت روی ۳۰
                 if name == 'command_display':
                     cmd_box = BoxLayout(
                         orientation='vertical',
@@ -1393,13 +1497,13 @@ class CombinedAppRoot(FloatLayout):
                     title_label = Label(
                         text='Last Command',
                         size_hint_y=0.3,
-                        font_size=max(30, w_scaled * 0.15),
+                        font_size='14sp',
                         color=(0, 0, 0, 1)
                     )
                     self.last_cmd_label = Label(
                         text='--',
                         size_hint_y=0.7,
-                        font_size=max(30, w_scaled * 0.2),
+                        font_size='14sp',
                         color=(0, 0.5, 0, 1)
                     )
                     
@@ -1420,13 +1524,13 @@ class CombinedAppRoot(FloatLayout):
                     device_title = Label(
                         text='Device',
                         size_hint_y=0.3,
-                        font_size=max(30, w_scaled * 0.15),
+                        font_size='14sp',
                         color=(0, 0, 0, 1)
                     )
                     self.device_name_label = Label(
                         text='Not Connected',
                         size_hint_y=0.7,
-                        font_size=max(30, w_scaled * 0.2),
+                        font_size='14sp',
                         color=(0.2, 0.2, 0.8, 1)
                     )
                     
@@ -1741,7 +1845,13 @@ class CombinedAppRoot(FloatLayout):
                 set_setting('last_connected_device', addr)
             
             if not HAS_ANDROID:
-                self.ble.start_battery_simulation()
+                # شبیه‌سازی باتری برای محیط غیر اندروید
+                def simulate_battery():
+                    self.ble.battery_level = 85
+                    if self.ble.battery_update_callback:
+                        self.ble.battery_update_callback(85)
+                
+                Clock.schedule_once(lambda dt: simulate_battery(), 1)
                 
             self.show_connection_message("Connected successfully!", "success")
         else:
