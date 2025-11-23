@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Intent filter for Bluetooth adapter state changes -->
+    <intent-filter>
+        <action android:name="android.bluetooth.adapter.action.STATE_CHANGED" />
+        <category android:name="android.intent.category.DEFAULT" />
+    </intent-filter>
+
+    <!-- Intent filter for discovering BLE devices -->
+    <intent-filter>
+        <action android:name="android.bluetooth.device.action.FOUND" />
+        <category android:name="android.intent.category.DEFAULT" />
+    </intent-filter>
+
+    <!-- Intent filter when BLE device is connected -->
+    <intent-filter>
+        <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
+        <category android:name="android.intent.category.DEFAULT" />
+    </intent-filter>
+
+    <!-- Intent filter when BLE device is disconnected -->
+    <intent-filter>
+        <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
+        <category android:name="android.intent.category.DEFAULT" />
+    </intent-filter>
+
+    <!-- Intent filter for requesting enable Bluetooth -->
+    <intent-filter>
+        <action android:name="android.bluetooth.adapter.action.REQUEST_ENABLE" />
+        <category android:name="android.intent.category.DEFAULT" />
+    </intent-filter>
+
+    <!-- Intent filter for BLE scan results -->
+    <intent-filter>
+        <action android:name="android.bluetooth.device.action.ACTION_FOUND" />
+        <category android:name="android.intent.category.DEFAULT" />
+    </intent-filter>
+
+    <!-- Intent filter for BLE connection state change -->
+    <intent-filter>
+        <action android:name="android.bluetooth.device.action.ACTION_ACL_CONNECTED" />
+        <category android:name="android.intent.category.DEFAULT" />
+    </intent-filter>
+
+    <intent-filter>
+        <action android:name="android.bluetooth.device.action.ACTION_ACL_DISCONNECTED" />
+        <category android:name="android.intent.category.DEFAULT" />
+    </intent-filter>
+</resources>
