@@ -1,5 +1,3 @@
-[app]
-
 # عنوان اپلیکیشن
 title = Bluetooth RC
 # نام پکیج
