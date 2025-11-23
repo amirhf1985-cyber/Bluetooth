@@ -1,58 +1,24 @@
 [app]
 
-# عنوان اپلیکیشن
 title = Bluetooth RC
-# نام پکیج
 package.name = bluetoothrc
-# دامنه پکیج
-package.domain = ir.bluetoothrc
+package.domain = org.amirhf
 
-# مسیر کد اصلی
 source.dir = .
-source.main = main.py
+source.include_exts = py,png,jpg,kv,json
 
-# نسخه اپلیکیشن
-version = 1.0.0
-version.code = 1
+version = 0.1
 
-# الزامات پایتون
-requirements = python3.12,kivy==2.3.0,pyjnius,android,hostpython3,openssl,libffi
-
-# نسخه پایتون برای Buildozer
-python.version = 3.11
-
-# تنظیمات اندروید
-android.api = 31
-android.minapi = 21
-android.ndk = 25b
-android.ndk_api = 21
-android.sdk = 31
-
-# مجوزهای اندروید
-android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,BLUETOOTH_SCAN,BLUETOOTH_CONNECT,INTERNET
-
-# ویژگی‌ها
-android.features = android.hardware.bluetooth,android.hardware.sensor.accelerometer
-
-# آیکون و لوگو
-icon.filename = icon.png
-presplash.filename = presplash.png
-
-# جهت صفحه
+requirements = python3,kivy==2.3.0,pyjnius,android,openssl,libffi
 orientation = landscape
-
-# تنظیمات بیلد
 fullscreen = 1
-android.window_soft_input_mode = adjustResize
-android.allow_backup = True
-android.accept_sdk_license = True
 
-# پیکربندی p4a
-p4a.branch = master
+android.api = 33
+android.minapi = 21
 
-# OSX (اختیاری)
-osx.python_version = 3
-osx.kivy_version = 2.3.0
+android.ndk = 25b
+android.ndk_path = /usr/lib/android-ndk/android-ndk-r25b
+android.sdk_path = /usr/lib/android-sdk
+android.ndk_api = 21
 
-[buildozer]
-log_level = 2
+android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,BLUETOOTH_CONNECT,BLUETOOTH_SCAN
